@@ -1,0 +1,93 @@
+create database Vestibular
+use Vestibular 
+
+create table Candidato (
+	CodCan int constraint pk_codCon primary key,
+	Nome varchar(50),
+	Endereco varchar(50),
+	CPF varchar(20),
+	RG varchar(20),
+	Situacao varchar(50) constraint ck_situacaoCand check (Situacao in ('Aprovado', 'Reprovado', 'Aprovado 2 chamada'))
+)
+
+create table Pagamento(
+	CodPag int constraint pk_CodPag primary key,
+	VlPago money,
+	VlJurosMulta money,
+	dtVencto datetime constraint df_dtVenc default(getdate() + 10),
+	dtPagto datetime,
+	dtRegistro datetime 
+)
+
+create table Curso(
+	CodCur int constraint pk_CodCur primary key,
+	Nome varchar(50),
+	CargaHoraria int constraint ck_cargaHoraria check (CargaHoraria = 2800 or CargaHoraria = 3600),
+	NroVagas int
+)
+
+create table Inscricao(
+	CodIns int constraint pk_CodIns primary  key,
+	Nota float,
+	AnoInscr int,
+	DataInscricao date constraint df_dtRegistro Default(getdate()),
+	CodCan int constraint fk_CodCan foreign key references Candidato(CodCan),
+	Opcao1 int constraint fk_opcao1 foreign key references Curso(CodCur),
+	Opcao2 int constraint fk_opcao2 foreign key references Curso(CodCur),
+	constraint ck_opcoes check (Opcao1 != Opcao2),
+	Situacao varchar(50) constraint ck_situacaoInscr check (Situacao in ('Aguardando Pgmnt', 'Cancelado', 'Encerrado', 'Pago')),
+	constraint uq_AnoInscr unique(AnoINscr, CodCan),
+	CodPag int constraint fk_CodPag foreign key references Pagamento(CodPag)
+)
+
+--
+insert into Candidato values(1, 'ze', 'rua', '1', '2', 'aprovado')
+insert into Curso values (1, 'si', 3600, 20)
+insert into Curso values (2, 'ccp', 2800, 40)
+
+--
+begin tran gerarboleto
+    begin try
+        insert into Pagamento (CodPag, dtRegistro) 
+        values (1, getdate());
+
+        insert into Inscricao (COdIns, AnoInscr, CodCan, Opcao1, Opcao2, Situacao, CodPag) 
+        values (1, 2024, 1, 1, 2, 'aguardando pgmnt', 1);
+
+        commit transaction gerarboleto;
+    end try
+    begin catch
+        rollback transaction gerarboleto;
+    end catch;
+
+begin tran registrarNota
+    begin try
+        update Inscricao 
+        set Nota = 85.5 
+        where CodIns = 1;
+
+        update Candidato 
+        set Situacao = 'Aprovado' 
+        where CodCan = 1;
+
+        commit transaction registrarNota;
+    end try
+    begin catch
+        rollback transaction registrarNota;
+    end catch;
+
+begin tran alterarpgmnt
+    begin try
+        update Pagamento 
+        set dtPagto = getdate(), VlPago = 150.00 
+        where CodPag = 1;
+
+        update Inscricao 
+        set Situacao = 'pago' 
+        where CodPag = 1;
+
+        commit transaction alterarpgmnt;
+    end try
+    begin catch
+        rollback transaction alterarpgmnt;
+    end catch;
